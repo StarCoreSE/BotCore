@@ -16,7 +16,7 @@ namespace BotCore
     public class Program
     {
         public static DiscordSocketClient Client;
-        public static Program I;
+        public static Program? I;
         private static ConfigWrapper _config;
         private static InteractionService _interactionService;
 
@@ -29,14 +29,6 @@ namespace BotCore
 
             I = new Program();
 
-            //  You can assign your bot token to a string, and pass that in to connect.
-            //  This is, however, insecure, particularly if you plan to have your code hosted in a public repository.
-            // var token = "token";
-
-            // Some alternative options would be to keep your token in an Environment Variable or a standalone file.
-            // var token = Environment.GetEnvironmentVariable("NameOfYourEnvironmentVariable");
-            // var token = File.ReadAllText("token.txt");
-
             _config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText("config.json")) ?? throw new NullReferenceException("config.json is null!");
 
             await Client.LoginAsync(TokenType.Bot, _config.Token);
@@ -44,6 +36,7 @@ namespace BotCore
 
             // Block this task until the program is closed.
             await Task.Delay(Timeout.Infinite);
+            I = null;
         }
 
         private static Task Log(LogMessage msg)
@@ -62,6 +55,7 @@ namespace BotCore
         public async Task OnClientReady()
         {
             await CommandModule.RegisterCommands(Client);
+            ActivityModule.RegisterActivity(Client);
 
             Console.WriteLine("Initialized client.");
         }

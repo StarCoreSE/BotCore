@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord.WebSocket;
 using Discord;
@@ -19,18 +20,8 @@ namespace BotCore.Modules
         [
             new SlashCommandBuilder
             {
-                Name = "sc-list-roles",
-                Description = "Lists all roles of a user",
-                Options =
-                [
-                    new SlashCommandOptionBuilder
-                    {
-                        Name = "user",
-                        Type = ApplicationCommandOptionType.User,
-                        Description = "The users whose roles you want to be listed",
-                        IsRequired = true
-                    }
-                ]
+                Name = "sc-ping",
+                Description = "Ping command to test if the bot is online.",
             },
             new SlashCommandBuilder
             {
@@ -58,13 +49,43 @@ namespace BotCore.Modules
                         Description = "Day and time (in UTC) at which the event should be started.",
                     }
                 ]
+            },
+            new SlashCommandBuilder
+            {
+            Name = "sc-register",
+            Description = "Register your team for the next Test Tournament!",
+            Options =
+            [
+                new SlashCommandOptionBuilder
+                {
+                    Name = "tag",
+                    Type = ApplicationCommandOptionType.String,
+                    Description = "Your faction tag.",
+                    IsRequired = true
+                },
+                new SlashCommandOptionBuilder
+                {
+                    Name = "name",
+                    Type = ApplicationCommandOptionType.String,
+                    Description = "Your faction name.",
+                    IsRequired = true
+                },
+                new SlashCommandOptionBuilder
+                {
+                    Name = "users",
+                    Type = ApplicationCommandOptionType.String,
+                    Description = "Players on your team.",
+                    IsRequired = true,
+                },
+            ]
             }
         ];
 
         private static readonly Dictionary<string, Func<SocketSlashCommand, Task>> SlashCommandMethods = new()
         {
-            ["sc-list-roles"] = HandleListRoleCommand,
+            ["sc-ping"] = HandlePing,
             ["sc-create-tt"] = CreateTestTournament,
+            ["sc-register"] = RegisterTeam,
         };
 
         private static async Task SlashCommandHandler(SocketSlashCommand command)
@@ -87,7 +108,7 @@ namespace BotCore.Modules
 
             Console.WriteLine("Registered commands:");
             foreach (var command in SlashCommands)
-                Console.WriteLine($"- {command.Name} {string.Join(", ", command.Options.Select(o => o.IsRequired ?? false ? o.Name : $"({o.Name})"))}: {command.Description}");
+                Console.WriteLine($"- {command.Name} {string.Join(", ", command.Options?.Select(o => o.IsRequired ?? false ? o.Name : $"({o.Name})") ?? Array.Empty<string>())}: {command.Description}");
 
             if (!WereCommandsChanged(client))
             {
@@ -128,7 +149,7 @@ namespace BotCore.Modules
                 if (command.Description != existing.Description)
                     return true;
 
-                if (command.Options.Count != existing.Options.Count)
+                if (command.Options?.Count != existing.Options?.Count)
                     return true;
             }
 
@@ -137,23 +158,10 @@ namespace BotCore.Modules
 
         #region Command Methods
 
-        private static async Task HandleListRoleCommand(SocketSlashCommand command)
+        private static async Task HandlePing(SocketSlashCommand command)
         {
-            // We need to extract the user parameter from the command. since we only have one option and it's required, we can just use the first option.
-            var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
-
-            // We remove the everyone role and select the mention of each role.
-            var roleList = string.Join(",\n", guildUser.Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
-
-            var embedBuiler = new EmbedBuilder()
-                .WithAuthor(guildUser.ToString(), guildUser.GetAvatarUrl() ?? guildUser.GetDefaultAvatarUrl())
-                .WithTitle("Roles")
-                .WithDescription(roleList)
-                .WithColor(Color.Green)
-                .WithCurrentTimestamp();
-
             // Now, Let's respond with the embed.
-            await command.RespondAsync(embed: embedBuiler.Build(), ephemeral: true);
+            await command.RespondAsync(text: $"{(command.CreatedAt - DateTimeOffset.Now).TotalMilliseconds}ms", ephemeral: true);
         }
 
         private static async Task CreateTestTournament(SocketSlashCommand command)
@@ -202,12 +210,46 @@ namespace BotCore.Modules
                 return;
             }
 
-
             var guild = Program.Client.GetGuild(command.GuildId ??
                                                 throw new Exception("Command was not executed in a guild!"));
 
             var newEvent = await guild.CreateEventAsync(name, datetime, GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
+        }
+
+        private static async Task RegisterTeam(SocketSlashCommand command)
+        {
+            string name = "";
+            string tag = "";
+            string[] users = Array.Empty<string>();
+            foreach (var option in command.Data.Options)
+            {
+                switch (option.Name)
+                {
+                    case "name":
+                        name = (string) option.Value;
+                        break;
+                    case "tag":
+                        tag = (string) option.Value;
+                        break;
+                    case "users":
+                        users = Regex.Replace((string) option.Value, "[^<\\d@>]", "").Replace(">", ">,").Split(",").Where(v => !string.IsNullOrWhiteSpace(v)).ToArray();
+                        break;
+                }
+            }
+
+            await command.RespondAsync(embed: new EmbedBuilder
+            {
+                Title = $"*Registered [{tag}] {name}*",
+                Author = new EmbedAuthorBuilder
+                {
+                    Name = command.User.GlobalName,
+                    IconUrl = command.User.GetAvatarUrl() ?? command.User.GetDefaultAvatarUrl()
+                },
+                Description = $"\n  {string.Join("\n  ", users)}"
+            }.Build(), ephemeral: true);
+
+            TeamsModule.RegisterTeam(name, tag, command.User.Mention, users);
         }
 
         #endregion
