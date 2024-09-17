@@ -50,7 +50,12 @@ namespace BotCore.Modules
                         Name = "timestamp",
                         Type = ApplicationCommandOptionType.Integer,
                         Description = "Timestamp (in unix seconds) at which the event should be started.",
-                        IsRequired = true
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "datetime",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "Day and time (in UTC) at which the event should be started.",
                     }
                 ]
             }
@@ -154,7 +159,8 @@ namespace BotCore.Modules
         private static async Task CreateTestTournament(SocketSlashCommand command)
         {
             string name = "";
-            long timestamp = 0;
+            long? timestamp = null;
+            DateTimeOffset datetime = DateTimeOffset.UnixEpoch;
 
             foreach (var data in command.Data.Options)
             {
@@ -166,18 +172,33 @@ namespace BotCore.Modules
                     case "timestamp":
                         timestamp = (long) data.Value;
                         break;
+                    case "datetime":
+                        if (!DateTimeOffset.TryParse((string) data.Value, out datetime))
+                        {
+                            await command.RespondAsync(text: $"Please add either a valid datetime or timestamp.", ephemeral: true);
+                            return;
+                        }
+                        break;
                 }
             }
 
+            if (timestamp != null)
+                datetime = DateTimeOffset.FromUnixTimeSeconds(timestamp.Value);
+
             // Error checking
-            if (DateTimeOffset.FromUnixTimeSeconds(timestamp) < DateTime.Now)
+            if (datetime == DateTimeOffset.UnixEpoch)
             {
-                await command.RespondAsync(text: $"Cannot create an event in the past! ({DateTimeOffset.FromUnixTimeSeconds(timestamp):g})", ephemeral: true);
+                await command.RespondAsync(text: $"Please add either a valid datetime or timestamp.", ephemeral: true);
                 return;
             }
-            if (DateTimeOffset.FromUnixTimeSeconds(timestamp) >= DateTime.Now.AddYears(5))
+            if (datetime < DateTime.Now)
             {
-                await command.RespondAsync(text: $"Cannot create an event more than 5 years in the future! ({DateTimeOffset.FromUnixTimeSeconds(timestamp):g})", ephemeral: true);
+                await command.RespondAsync(text: $"Cannot create an event in the past! ({datetime:g})", ephemeral: true);
+                return;
+            }
+            if (datetime >= DateTime.Now.AddYears(5))
+            {
+                await command.RespondAsync(text: $"Cannot create an event more than 5 years in the future! ({datetime:g})", ephemeral: true);
                 return;
             }
 
@@ -185,7 +206,7 @@ namespace BotCore.Modules
             var guild = Program.Client.GetGuild(command.GuildId ??
                                                 throw new Exception("Command was not executed in a guild!"));
 
-            var newEvent = await guild.CreateEventAsync(name, DateTimeOffset.FromUnixTimeSeconds(timestamp), GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
+            var newEvent = await guild.CreateEventAsync(name, datetime, GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
         }
 
