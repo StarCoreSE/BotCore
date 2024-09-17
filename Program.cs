@@ -15,7 +15,7 @@ namespace BotCore
 {
     public class Program
     {
-        private static DiscordSocketClient _client;
+        public static DiscordSocketClient Client;
         public static Program I;
         private static ConfigWrapper _config;
         private static InteractionService _interactionService;
@@ -24,8 +24,8 @@ namespace BotCore
 
         public static async Task Main()
         {
-            _client = new DiscordSocketClient();
-            _client.Log += Log;
+            Client = new DiscordSocketClient();
+            Client.Log += Log;
 
             I = new Program();
 
@@ -39,8 +39,8 @@ namespace BotCore
 
             _config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText("config.json")) ?? throw new NullReferenceException("config.json is null!");
 
-            await _client.LoginAsync(TokenType.Bot, _config.Token);
-            await _client.StartAsync();
+            await Client.LoginAsync(TokenType.Bot, _config.Token);
+            await Client.StartAsync();
 
             // Block this task until the program is closed.
             await Task.Delay(Timeout.Infinite);
@@ -56,12 +56,12 @@ namespace BotCore
 
         public Program()
         {
-            _client.Ready += OnClientReady;
+            Client.Ready += OnClientReady;
         }
 
         public async Task OnClientReady()
         {
-            await CommandModule.RegisterCommands(_client);
+            await CommandModule.RegisterCommands(Client);
 
             Console.WriteLine("Initialized client.");
         }
