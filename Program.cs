@@ -61,55 +61,9 @@ namespace BotCore
 
         public async Task OnClientReady()
         {
-            _client.SlashCommandExecuted += SlashCommandHandler;
-
-            var guildCommand = new SlashCommandBuilder()
-                .WithName("list-roles")
-                .WithDescription("Lists all roles of a user.")
-                .AddOption("user", ApplicationCommandOptionType.User, "The users whos roles you want to be listed", isRequired: true);
-
-            try
-            {
-                await _client.Rest.CreateGlobalCommand(guildCommand.Build());
-            }
-            catch(HttpException exception)
-            {
-                var json = JsonConvert.SerializeObject(exception.Errors, Formatting.Indented);
-                Console.WriteLine(json);
-            }
+            await CommandModule.RegisterCommands(_client);
 
             Console.WriteLine("Initialized client.");
-        }
-
-        private async Task SlashCommandHandler(SocketSlashCommand command)
-        {
-            Console.WriteLine("WE GOT A COMMAND !!!");
-            // Let's add a switch statement for the command name so we can handle multiple commands in one event.
-            switch(command.Data.Name)
-            {
-                case "list-roles":
-                    await HandleListRoleCommand(command);
-                    break;
-            }
-        }
-
-        private async Task HandleListRoleCommand(SocketSlashCommand command)
-        {
-            // We need to extract the user parameter from the command. since we only have one option and it's required, we can just use the first option.
-            var guildUser = (SocketGuildUser)command.Data.Options.First().Value;
-
-            // We remove the everyone role and select the mention of each role.
-            var roleList = string.Join(",\n", guildUser.Roles.Where(x => !x.IsEveryone).Select(x => x.Mention));
-
-            var embedBuiler = new EmbedBuilder()
-                .WithAuthor(guildUser.ToString(), guildUser.GetAvatarUrl() ?? guildUser.GetDefaultAvatarUrl())
-                .WithTitle("Roles")
-                .WithDescription(roleList)
-                .WithColor(Color.Green)
-                .WithCurrentTimestamp();
-
-            // Now, Let's respond with the embed.
-            await command.RespondAsync(embed: embedBuiler.Build(), ephemeral: true);
         }
     }
 }
