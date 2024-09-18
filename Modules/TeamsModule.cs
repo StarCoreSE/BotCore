@@ -15,7 +15,7 @@ namespace BotCore.Modules
 
         public bool RegisterTeam(string teamName, string teamTag, string leader, string[] members, out string reason)
         {
-            Team? existingTeam = Teams.Find(t => t.Name == teamName || t.Tag == teamTag);
+            Team? existingTeam = Teams.Find(t => t.Name == teamName || t.Tag == teamTag || t.Leader == leader);
 
             if (existingTeam != null)
             {
@@ -27,6 +27,9 @@ namespace BotCore.Modules
 
                 Teams.Remove(existingTeam);
             }
+
+            if (!members.Contains(leader))
+                members = members.ToList().Append(leader).ToArray();
 
             Teams.Add(new Team
             {
@@ -70,7 +73,7 @@ namespace BotCore.Modules
                     Name = user.GlobalName,
                     IconUrl = user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl()
                 },
-                Description = $"\n  {string.Join("\n  ", Members)}"
+                Description = $"Leader: {Leader}\n  {string.Join("\n  ", Members)}"
             };
         }
     }

@@ -24,6 +24,11 @@ namespace BotCore.Modules
         {
             return _tournaments.Find(t => t.GuildId == guildId && t.EventId == eventId);
         }
+
+        public static IEnumerable<Tournament> GetTournaments(ulong guildId)
+        {
+            return _tournaments.Where(t => t.GuildId == guildId);
+        }
     }
 
     internal class Tournament

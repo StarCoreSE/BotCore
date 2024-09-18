@@ -1,6 +1,7 @@
 ﻿using Discord.Interactions;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -209,7 +210,7 @@ namespace BotCore.Modules
         {
             string name = "";
             long? timestamp = null;
-            DateTimeOffset datetime = DateTimeOffset.UnixEpoch;
+            DateTimeOffset startTime = DateTimeOffset.UnixEpoch;
 
             foreach (var data in command.Data.Options)
             {
@@ -222,7 +223,7 @@ namespace BotCore.Modules
                         timestamp = (long) data.Value;
                         break;
                     case "datetime":
-                        if (!DateTimeOffset.TryParse((string) data.Value, out datetime))
+                        if (!DateTimeOffset.TryParse((string) data.Value, out startTime))
                         {
                             await command.RespondAsync(text: $"Please add either a valid datetime or timestamp.", ephemeral: true);
                             return;
@@ -232,29 +233,37 @@ namespace BotCore.Modules
             }
 
             if (timestamp != null)
-                datetime = DateTimeOffset.FromUnixTimeSeconds(timestamp.Value);
+                startTime = DateTimeOffset.FromUnixTimeSeconds(timestamp.Value);
 
             // Error checking
-            if (datetime == DateTimeOffset.UnixEpoch)
+            if (startTime == DateTimeOffset.UnixEpoch)
             {
                 await command.RespondAsync(text: $"Please add either a valid datetime or timestamp.", ephemeral: true);
                 return;
             }
-            if (datetime < DateTime.Now)
+            if (startTime < DateTime.Now)
             {
-                await command.RespondAsync(text: $"Cannot create an event in the past! ({datetime:g})", ephemeral: true);
+                await command.RespondAsync(text: $"Cannot create an event in the past! ({startTime:g})", ephemeral: true);
                 return;
             }
-            if (datetime >= DateTime.Now.AddYears(5))
+            if (startTime >= DateTime.Now.AddYears(5))
             {
-                await command.RespondAsync(text: $"Cannot create an event more than 5 years in the future! ({datetime:g})", ephemeral: true);
+                await command.RespondAsync(text: $"Cannot create an event more than 5 years in the future! ({startTime:g})", ephemeral: true);
                 return;
             }
 
             var guild = Program.Client.GetGuild(command.GuildId ??
                                                 throw new Exception("Command was not executed in a guild!"));
 
-            var newEvent = await guild.CreateEventAsync(name, datetime, GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
+            var newEvent = await guild.CreateEventAsync(name, startTime, GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
+            TournamentsModule.RegisterTournament(new Tournament
+            {
+                Name = name,
+                StartTime = startTime,
+                GuildId = command.GuildId.Value,
+                EventId = newEvent.Id,
+            });
+            
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
         }
 
@@ -264,14 +273,14 @@ namespace BotCore.Modules
 
             if (tournament == null)
             {
-                await command.RespondAsync(text: "Tournament does not exist!", ephemeral: true);
+                await command.RespondAsync(text: $"Tournament does not exist! Valid options:\n- {string.Join("\n- ", TournamentsModule.GetTournaments(command.GuildId.Value))}", ephemeral: true);
                 return;
             }
 
             await command.RespondAsync(text: $"Teams registered for {tournament.Name}:", ephemeral: true);
 
             foreach (var team in tournament.TeamsModule.Teams)
-                await command.RespondAsync(embed: team.GenerateEmbed().Build(), ephemeral: true);
+                await command.FollowupAsync(embed: team.GenerateEmbed().Build(), ephemeral: true);
         }
 
         private static async Task RegisterTeam(SocketSlashCommand command)
@@ -297,6 +306,12 @@ namespace BotCore.Modules
                         tournament = TournamentsModule.GetTournament(command.GuildId ?? throw new Exception("Command cannot be run outside of a server!"), (string) option.Value);
                         break;
                 }
+            }
+
+            if (tournament == null)
+            {
+                await command.RespondAsync(text: $"Failed to register team! Reason:\n> Tournament `{tournament}` does not exist! Valid options:\n- {string.Join("\n- ", TournamentsModule.GetTournaments(command.GuildId.Value))}", ephemeral: true);
+                return;
             }
 
             string failReason;
