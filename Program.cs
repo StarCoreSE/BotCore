@@ -55,7 +55,7 @@ namespace BotCore
         public async Task OnClientReady()
         {
             await CommandModule.RegisterCommands(Client);
-            ActivityModule.RegisterActivity(Client);
+            await ActivityModule.RegisterActivity(Client);
 
             Console.WriteLine("Initialized client.");
         }

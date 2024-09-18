@@ -11,6 +11,8 @@ using Discord.Net;
 using Discord.Rest;
 using Newtonsoft.Json;
 using static System.Net.WebRequestMethods;
+using Microsoft.VisualBasic.FileIO;
+using System.Xml.Linq;
 
 namespace BotCore.Modules
 {
@@ -52,32 +54,69 @@ namespace BotCore.Modules
             },
             new SlashCommandBuilder
             {
-            Name = "sc-register",
-            Description = "Register your team for the next Test Tournament!",
-            Options =
-            [
-                new SlashCommandOptionBuilder
-                {
-                    Name = "tag",
-                    Type = ApplicationCommandOptionType.String,
-                    Description = "Your faction tag.",
-                    IsRequired = true
-                },
-                new SlashCommandOptionBuilder
-                {
-                    Name = "name",
-                    Type = ApplicationCommandOptionType.String,
-                    Description = "Your faction name.",
-                    IsRequired = true
-                },
-                new SlashCommandOptionBuilder
-                {
-                    Name = "users",
-                    Type = ApplicationCommandOptionType.String,
-                    Description = "Players on your team.",
-                    IsRequired = true,
-                },
-            ]
+                Name = "sc-list-teams",
+                Description = "List all teams currently signed up.",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "tournament",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "The name of the tournament.",
+                        IsRequired = true
+                    }
+                ]
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-register",
+                Description = "Register your team for the next Test Tournament!",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "tag",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "Your faction tag.",
+                        IsRequired = true
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "name",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "Your faction name.",
+                        IsRequired = true
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "players",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "Players on your team.",
+                        IsRequired = true,
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "tournament",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "The tournament you are registering for.",
+                        IsRequired = true,
+                    }
+                ]
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-unregister",
+                Description = "Unregister your team from the next Test Tournament.",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "tournament",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "The tournament you are registering for.",
+                        IsRequired = true,
+                    }
+                ]
             }
         ];
 
@@ -85,7 +124,9 @@ namespace BotCore.Modules
         {
             ["sc-ping"] = HandlePing,
             ["sc-create-tt"] = CreateTestTournament,
+            ["sc-list-teams"] = ListTeams,
             ["sc-register"] = RegisterTeam,
+            ["sc-unregister"] = UnregisterTeam,
         };
 
         private static async Task SlashCommandHandler(SocketSlashCommand command)
@@ -161,7 +202,7 @@ namespace BotCore.Modules
         private static async Task HandlePing(SocketSlashCommand command)
         {
             // Now, Let's respond with the embed.
-            await command.RespondAsync(text: $"{(command.CreatedAt - DateTimeOffset.Now).TotalMilliseconds}ms", ephemeral: true);
+            await command.RespondAsync(text: $"{(DateTimeOffset.Now - command.CreatedAt).TotalMilliseconds}ms", ephemeral: true);
         }
 
         private static async Task CreateTestTournament(SocketSlashCommand command)
@@ -217,11 +258,28 @@ namespace BotCore.Modules
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
         }
 
+        private static async Task ListTeams(SocketSlashCommand command)
+        {
+            Tournament? tournament = TournamentsModule.GetTournament(command.GuildId ?? throw new Exception("Command cannot be run outside of a server!"), (string) command.Data.Options.First().Value);
+
+            if (tournament == null)
+            {
+                await command.RespondAsync(text: "Tournament does not exist!", ephemeral: true);
+                return;
+            }
+
+            await command.RespondAsync(text: $"Teams registered for {tournament.Name}:", ephemeral: true);
+
+            foreach (var team in tournament.TeamsModule.Teams)
+                await command.RespondAsync(embed: team.GenerateEmbed().Build(), ephemeral: true);
+        }
+
         private static async Task RegisterTeam(SocketSlashCommand command)
         {
             string name = "";
             string tag = "";
             string[] users = Array.Empty<string>();
+            Tournament? tournament = null;
             foreach (var option in command.Data.Options)
             {
                 switch (option.Name)
@@ -232,24 +290,37 @@ namespace BotCore.Modules
                     case "tag":
                         tag = (string) option.Value;
                         break;
-                    case "users":
+                    case "players":
                         users = Regex.Replace((string) option.Value, "[^<\\d@>]", "").Replace(">", ">,").Split(",").Where(v => !string.IsNullOrWhiteSpace(v)).ToArray();
+                        break;
+                    case "tournament":
+                        tournament = TournamentsModule.GetTournament(command.GuildId ?? throw new Exception("Command cannot be run outside of a server!"), (string) option.Value);
                         break;
                 }
             }
 
-            await command.RespondAsync(embed: new EmbedBuilder
+            string failReason;
+            if (!tournament.TeamsModule.RegisterTeam(name, tag, command.User.Mention, users, out failReason))
             {
-                Title = $"*Registered [{tag}] {name}*",
-                Author = new EmbedAuthorBuilder
-                {
-                    Name = command.User.GlobalName,
-                    IconUrl = command.User.GetAvatarUrl() ?? command.User.GetDefaultAvatarUrl()
-                },
-                Description = $"\n  {string.Join("\n  ", users)}"
-            }.Build(), ephemeral: true);
+                await command.RespondAsync(text: "Failed to register team! Reason:\n>" + failReason, ephemeral: true);
+                return;
+            }
 
-            TeamsModule.RegisterTeam(name, tag, command.User.Mention, users);
+            await command.RespondAsync(embed: tournament.TeamsModule.Teams.Find(t => t.Leader == command.User.Mention).GenerateEmbed(command.User).WithTitle($"*Registered [{tag}] {name}*").Build(), ephemeral: false);
+        }
+
+        private static async Task UnregisterTeam(SocketSlashCommand command)
+        {
+            Tournament? tournament = TournamentsModule.GetTournament(command.GuildId ?? throw new Exception("Command cannot be run outside of a server!"), (string) command.Data.Options.First().Value);
+            Team? team = tournament?.TeamsModule.Teams.Find(t => t.Leader == command.User.Mention);
+
+            if (tournament == null || team == null)
+            {
+                await command.RespondAsync(text: "Failed to register team - you aren't signed up!", ephemeral: true);
+                return;
+            }
+
+            await command.RespondAsync(embed: team.GenerateEmbed(command.User).WithTitle($"*Unregistered [{team.Tag}] {team.Name}*").Build(), ephemeral: false);
         }
 
         #endregion
