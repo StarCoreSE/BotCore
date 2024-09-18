@@ -263,7 +263,7 @@ namespace BotCore.Modules
                 GuildId = command.GuildId.Value,
                 EventId = newEvent.Id,
             });
-            
+
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
         }
 
@@ -327,11 +327,10 @@ namespace BotCore.Modules
         private static async Task UnregisterTeam(SocketSlashCommand command)
         {
             Tournament? tournament = TournamentsModule.GetTournament(command.GuildId ?? throw new Exception("Command cannot be run outside of a server!"), (string) command.Data.Options.First().Value);
-            Team? team = tournament?.TeamsModule.Teams.Find(t => t.Leader == command.User.Mention);
 
-            if (tournament == null || team == null)
+            if (tournament == null || !tournament.TeamsModule.UnregisterTeam(command.User.Mention, out var team))
             {
-                await command.RespondAsync(text: "Failed to register team - you aren't signed up!", ephemeral: true);
+                await command.RespondAsync(text: "Failed to unregister team - you aren't signed up!", ephemeral: true);
                 return;
             }
 

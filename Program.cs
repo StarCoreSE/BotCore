@@ -36,7 +36,6 @@ namespace BotCore
 
             // Block this task until the program is closed.
             await Task.Delay(Timeout.Infinite);
-            I = null;
         }
 
         private static Task Log(LogMessage msg)
@@ -56,6 +55,7 @@ namespace BotCore
         {
             await CommandModule.RegisterCommands(Client);
             await ActivityModule.RegisterActivity(Client);
+            await TournamentsModule.LoadExistingTournaments();
 
             Console.WriteLine("Initialized client.");
         }
