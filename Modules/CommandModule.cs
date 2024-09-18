@@ -41,6 +41,13 @@ namespace BotCore.Modules
                     },
                     new SlashCommandOptionBuilder
                     {
+                        Name = "description",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "The description for this event.",
+                        IsRequired = true
+                    },
+                    new SlashCommandOptionBuilder
+                    {
                         Name = "timestamp",
                         Type = ApplicationCommandOptionType.Integer,
                         Description = "Timestamp (in unix seconds) at which the event should be started.",
@@ -50,7 +57,22 @@ namespace BotCore.Modules
                         Name = "datetime",
                         Type = ApplicationCommandOptionType.String,
                         Description = "Day and time (in UTC) at which the event should be started.",
-                    }
+                    },
+                ]
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-cancel-tt",
+                Description = "Cancel a Test Tournament.",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "name",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "The name of the event.",
+                        IsRequired = true
+                    },
                 ]
             },
             new SlashCommandBuilder
@@ -125,6 +147,7 @@ namespace BotCore.Modules
         {
             ["sc-ping"] = HandlePing,
             ["sc-create-tt"] = CreateTestTournament,
+            ["sc-cancel-tt"] = CancelTestTournament,
             ["sc-list-teams"] = ListTeams,
             ["sc-register"] = RegisterTeam,
             ["sc-unregister"] = UnregisterTeam,
@@ -174,6 +197,7 @@ namespace BotCore.Modules
                 Console.WriteLine(json);
             }
         }
+
 
         private static bool WereCommandsChanged(DiscordSocketClient client)
         {
@@ -265,6 +289,19 @@ namespace BotCore.Modules
             });
 
             await command.RespondAsync(text: $"Created new event, https://discord.com/events/{newEvent.GuildId}/{newEvent.Id}", ephemeral: false);
+        }
+
+        private static async Task CancelTestTournament(SocketSlashCommand command)
+        {
+            string name = (string) command.Data.Options.First();
+
+            if (!TournamentsModule.CancelTournament(name))
+            {
+                await command.RespondAsync(text: $"Tournament `{name}` does not exist!", ephemeral: true);
+                return;
+            }
+
+            await command.RespondAsync(text: $"Cancelled `{name}`.", ephemeral: false);
         }
 
         private static async Task ListTeams(SocketSlashCommand command)

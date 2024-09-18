@@ -63,20 +63,16 @@ namespace BotCore.Modules
             {
                 try
                 {
-                    Console.WriteLine(member);
-                    Program.Client.GetUser(ulong.Parse(member.Remove(0, 2).Remove(member.Length-3, 1))).SendMessageAsync(text: $"You have been signed up for `{Tournament.Name}`!", embeds: new []
-                    {
-                        newTeam.GenerateEmbed().Build(),
-                        new EmbedBuilder
-                        {
-                            Url = Tournament.EventUrl()
-                        }.Build()
-                    });
+                    if (existingTeam?.Members.Contains(member) ?? false)
+                        continue;
+
+                    Console.WriteLine("Sending registration DM to " + member);
+                    Program.Client.GetUser(ulong.Parse(member.Remove(0, 2).Remove(member.Length-3, 1))).SendMessageAsync(text: $"You have been signed up for `{Tournament.Name}`!\n{Tournament.EventUrl()}", embed: newTeam.GenerateEmbed().Build());
                 }
                 catch (HttpException ex)
                 {
                     if (ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser)
-                        Console.WriteLine("Could not send message to user " + member);
+                        Console.WriteLine("Could not send registration DM to user " + member);
                     else throw;
                 }
             }

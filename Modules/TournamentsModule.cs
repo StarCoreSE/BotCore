@@ -25,6 +25,18 @@ namespace BotCore.Modules
             Task.Run(SaveTournaments);
         }
 
+        public static bool CancelTournament(string name)
+        {
+            Tournament? tournament = _tournaments.Find(t => t.Name == name);
+            if (tournament == null)
+                return false;
+
+            _tournaments.Remove(tournament);
+            Program.Client.GetGuild(tournament.GuildId).GetEvent(tournament.EventId)?.DeleteAsync();
+            Task.Run(SaveTournaments);
+            return true;
+        }
+
         public static Tournament? GetTournament(ulong guildId, string name)
         {
             return _tournaments.Find(t => t.GuildId == guildId && t.Name == name);
