@@ -9,5 +9,6 @@ namespace BotCore
     public class ConfigWrapper
     {
         public string Token { get; set; }
+        public ulong TournamentInfoChannel { get; set; }
     }
 }

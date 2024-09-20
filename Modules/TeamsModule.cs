@@ -30,7 +30,21 @@ namespace BotCore.Modules
 
         public bool RegisterTeam(string teamName, string teamTag, string leader, string[] members, out string reason)
         {
+            var guild = Program.Client.GetGuild(Tournament.GuildId);
             Team? existingTeam = Teams.Find(t => t.Name == teamName || t.Tag == teamTag || t.Leader == leader);
+
+            if (!members.Contains(leader))
+                members = members.Append(leader).ToArray();
+            members = members.Where(m => !string.IsNullOrWhiteSpace(m)).ToArray();
+
+            Team newTeam = new Team
+            {
+                Name = teamName,
+                Tag = teamTag,
+                Leader = leader,
+                Members = members,
+                Role = existingTeam?.Role ?? guild.CreateRoleAsync(teamName).Result.Id
+            };
 
             if (existingTeam != null)
             {
@@ -40,21 +54,20 @@ namespace BotCore.Modules
                     return false;
                 }
 
+                foreach (var member in existingTeam.Members)
+                {
+                    if (!members.Contains(member))
+                    {
+                        var user = Program.Client.GetUser(
+                            ulong.Parse(member.Remove(0, 2).Remove(member.Length - 3, 1)));
+                        user.SendMessageAsync(text: $"You have been removed from `{Tournament.Name}`.", embed: newTeam.GenerateEmbed().Build());
+
+                        guild.GetUser(user.Id)?.RemoveRoleAsync(newTeam.Role);
+                    }
+                }
+
                 Teams.Remove(existingTeam);
             }
-
-            if (!members.Contains(leader))
-                members = members.Append(leader).ToArray();
-
-            members = members.Where(m => !string.IsNullOrWhiteSpace(m)).ToArray();
-
-            Team newTeam = new Team
-            {
-                Name = teamName,
-                Tag = teamTag,
-                Leader = leader,
-                Members = members
-            };
 
             Teams.Add(newTeam);
 
@@ -67,7 +80,10 @@ namespace BotCore.Modules
                         continue;
 
                     Console.WriteLine("Sending registration DM to " + member);
-                    Program.Client.GetUser(ulong.Parse(member.Remove(0, 2).Remove(member.Length-3, 1))).SendMessageAsync(text: $"You have been signed up for `{Tournament.Name}`!\n{Tournament.EventUrl()}", embed: newTeam.GenerateEmbed().Build());
+                    var user = Program.Client.GetUser(
+                        ulong.Parse(member.Remove(0, 2).Remove(member.Length - 3, 1)));
+                    user.SendMessageAsync(text: $"You have been signed up for `{Tournament.Name}`!\n{Tournament.EventUrl()}", embed: newTeam.GenerateEmbed().Build());
+                    guild.GetUser(user.Id)?.AddRoleAsync(newTeam.Role);
                 }
                 catch (HttpException ex)
                 {
@@ -77,8 +93,8 @@ namespace BotCore.Modules
                 }
             }
 
-            Console.WriteLine($"Registered team:\n  Name: {teamName}\n  Tag: {teamTag}\n  Leader: {leader}\n  Members: {string.Join(", ", members)}");
-            reason = "";
+            Console.WriteLine($"{(existingTeam == null ? "Registered" : "Updated")} team:\n  Name: {teamName}\n  Tag: {teamTag}\n  Leader: {leader}\n  Members: {string.Join(", ", members)}");
+            reason = existingTeam?.Name ?? "";
             return true;
         }
 
@@ -89,6 +105,8 @@ namespace BotCore.Modules
                 return false;
 
             Teams.Remove(existingTeam);
+            Program.Client.GetGuild(Tournament.GuildId).GetRole(existingTeam.Role).DeleteAsync();
+
             TournamentsModule.SaveTournaments();
 
             return true;
@@ -101,6 +119,7 @@ namespace BotCore.Modules
         public string Tag { get; set; }
         public string Leader { get; set; }
         public string[] Members { get; set; }
+        public ulong Role { get; set; }
 
         public EmbedBuilder GenerateEmbed(SocketUser? user = null)
         {

@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Runtime.Serialization;
+using Discord;
 
 namespace BotCore.Modules
 {
@@ -23,6 +25,7 @@ namespace BotCore.Modules
 
             _tournaments.Add(newTournament);
             Task.Run(SaveTournaments);
+            newTournament.OnInit(true);
         }
 
         public static bool CancelTournament(string name)
@@ -32,7 +35,12 @@ namespace BotCore.Modules
                 return false;
 
             _tournaments.Remove(tournament);
-            Program.Client.GetGuild(tournament.GuildId).GetEvent(tournament.EventId)?.DeleteAsync();
+
+            var guild = Program.Client.GetGuild(tournament.GuildId);
+            guild.GetEvent(tournament.EventId)?.DeleteAsync();
+            foreach (var role in tournament.TeamsModule.Teams.Select(t => t.Role))
+                guild.GetRole(role).DeleteAsync();
+
             Task.Run(SaveTournaments);
             return true;
         }
@@ -65,6 +73,7 @@ namespace BotCore.Modules
             foreach (var tournament in _tournaments)
             {
                 tournament.TeamsModule.Tournament = tournament;
+                tournament.OnInit(false);
             }
         }
 
@@ -89,8 +98,10 @@ namespace BotCore.Modules
         public DateTimeOffset SignupDeadline { get; set; }
         public ulong GuildId { get; set; }
         public ulong EventId { get; set; }
-
         public TeamsModule TeamsModule { get; set; }
+        private bool HasSentSignupMessage { get; set; } = false;
+        private bool HasSentStartMessage { get; set; } = false;
+
 
         public Tournament()
         {
@@ -100,6 +111,56 @@ namespace BotCore.Modules
         public string EventUrl()
         {
             return $"https://discord.com/events/{GuildId}/{EventId}";
+        }
+
+        public void OnInit(bool justRegistered)
+        {
+            if (!HasSentSignupMessage && SignupDeadline != DateTimeOffset.UnixEpoch)
+                Observable.Timer(SignupDeadline).Subscribe(DisplaySignup_Timed);
+            if (!HasSentStartMessage)
+                Observable.Timer(StartTime).Subscribe(DisplayStart_Timed);
+
+            if (!justRegistered)
+                return;
+
+            var channel =
+                Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel;
+
+            channel?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`\n{Description}\n\n@everyone <@1210205776484769862>\n{EventUrl()}");
+        }
+
+        private void DisplaySignup_Timed(long t)
+        {
+            Console.WriteLine("Signup deadline closed for " + Name);
+
+            var channel =
+                Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel;
+
+            channel?.SendMessageAsync($"# **{Name} - SIGNUPS CLOSED.**\n\nRegistered teams:");
+            channel?.SendMessageAsync(embeds: TeamsModule.Teams.Select(t => t.GenerateEmbed().Build()).ToArray());
+            HasSentSignupMessage = true;
+
+            GenerateBracket();
+        }
+
+        private void DisplayStart_Timed(long t)
+        {
+            Console.WriteLine($"# **{Name} has started!**");
+            (Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel)
+                ?.SendMessageAsync($"# **{Name} has started!**");
+            HasSentStartMessage = true;
+        }
+
+        public void EndTournament()
+        {
+            TournamentsModule.CancelTournament(Name);
+            (Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel)
+                ?.SendMessageAsync($"{Name} has ended!");
+        }
+
+        public void GenerateBracket()
+        {
+
         }
     }
 }

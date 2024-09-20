@@ -17,7 +17,7 @@ namespace BotCore
     {
         public static DiscordSocketClient Client;
         public static Program? I;
-        private static ConfigWrapper _config;
+        public static ConfigWrapper Config;
         private static InteractionService _interactionService;
 
         #region Static Methods
@@ -29,9 +29,9 @@ namespace BotCore
 
             I = new Program();
 
-            _config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText("config.json")) ?? throw new NullReferenceException("config.json is null!");
+            Config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText("config.json")) ?? throw new NullReferenceException("config.json is null!");
 
-            await Client.LoginAsync(TokenType.Bot, _config.Token);
+            await Client.LoginAsync(TokenType.Bot, Config.Token);
             await Client.StartAsync();
 
             // Block this task until the program is closed.

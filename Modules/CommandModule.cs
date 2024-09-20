@@ -44,7 +44,7 @@ namespace BotCore.Modules
                         Name = "description",
                         Type = ApplicationCommandOptionType.String,
                         Description = "The description for this event.",
-                        IsRequired = true
+                        IsRequired = false
                     },
                     new SlashCommandOptionBuilder
                     {
@@ -57,6 +57,12 @@ namespace BotCore.Modules
                         Name = "datetime",
                         Type = ApplicationCommandOptionType.String,
                         Description = "Day and time (in UTC) at which the event should be started.",
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "deadline",
+                        Type = ApplicationCommandOptionType.Integer,
+                        Description = "Timestamp (in unix seconds) at which signups close for the event.",
                     },
                 ]
             },
@@ -233,8 +239,11 @@ namespace BotCore.Modules
         private static async Task CreateTestTournament(SocketSlashCommand command)
         {
             string name = "";
+            string description = "";
             long? timestamp = null;
+            long? deadline = null;
             DateTimeOffset startTime = DateTimeOffset.UnixEpoch;
+            DateTimeOffset deadlineTime = DateTimeOffset.UnixEpoch;
 
             foreach (var data in command.Data.Options)
             {
@@ -253,11 +262,19 @@ namespace BotCore.Modules
                             return;
                         }
                         break;
+                    case "description":
+                        description = (string) data.Value;
+                        break;
+                    case "deadline":
+                        deadline = (long) data.Value;
+                        break;
                 }
             }
 
             if (timestamp != null)
                 startTime = DateTimeOffset.FromUnixTimeSeconds(timestamp.Value);
+            if (deadline != null)
+                deadlineTime = DateTimeOffset.FromUnixTimeSeconds(deadline.Value);
 
             // Error checking
             if (startTime == DateTimeOffset.UnixEpoch)
@@ -276,14 +293,30 @@ namespace BotCore.Modules
                 return;
             }
 
+            if (deadlineTime != DateTimeOffset.UnixEpoch)
+            {
+                if (deadlineTime > startTime)
+                {
+                    await command.RespondAsync(text: $"Signup deadline cannot be after the tournament start time! ({deadlineTime:g})", ephemeral: true);
+                    return;
+                }
+                if (deadlineTime < DateTimeOffset.Now)
+                {
+                    await command.RespondAsync(text: $"Cannot make a deadline in the past! ({deadlineTime:g})", ephemeral: true);
+                    return;
+                }
+            }
+
             var guild = Program.Client.GetGuild(command.GuildId ??
                                                 throw new Exception("Command was not executed in a guild!"));
 
-            var newEvent = await guild.CreateEventAsync(name, startTime, GuildScheduledEventType.Voice, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
+            var newEvent = await guild.CreateEventAsync(name, startTime, GuildScheduledEventType.Voice, description: description, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
             TournamentsModule.RegisterTournament(new Tournament
             {
                 Name = name,
+                Description = description,
                 StartTime = startTime,
+                SignupDeadline = deadlineTime,
                 GuildId = command.GuildId.Value,
                 EventId = newEvent.Id,
             });
@@ -358,7 +391,7 @@ namespace BotCore.Modules
                 return;
             }
 
-            await command.RespondAsync(embed: tournament.TeamsModule.Teams.Find(t => t.Leader == command.User.Mention).GenerateEmbed(command.User).WithTitle($"*Registered [{tag}] {name}*").Build(), ephemeral: false);
+            await command.RespondAsync(embed: tournament.TeamsModule.Teams.Find(t => t.Leader == command.User.Mention).GenerateEmbed(command.User).WithTitle($"*{(failReason == "" ? "Registered" : "Updated")} [{tag}] {name}*").Build(), ephemeral: false);
         }
 
         private static async Task UnregisterTeam(SocketSlashCommand command)
