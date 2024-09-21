@@ -33,6 +33,12 @@ namespace BotCore.Modules
             var guild = Program.Client.GetGuild(Tournament.GuildId);
             Team? existingTeam = Teams.Find(t => t.Name == teamName || t.Tag == teamTag || t.Leader == leader);
 
+            if (existingTeam == null && Tournament.SignupDeadline != DateTimeOffset.UnixEpoch && Tournament.SignupDeadline < DateTimeOffset.Now)
+            {
+                reason = $"Signups are closed as of <t:{Tournament.SignupDeadline.ToUnixTimeSeconds()}:R>.\nContact an admin if you think this is a mistake.";
+                return false;
+            }
+
             if (!members.Contains(leader))
                 members = members.Append(leader).ToArray();
             members = members.Where(m => !string.IsNullOrWhiteSpace(m)).ToArray();

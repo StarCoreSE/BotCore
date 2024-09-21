@@ -20,11 +20,12 @@ namespace BotCore.Modules
 
         public static void RegisterTournament(Tournament newTournament)
         {
-            if (_tournaments.Find(t => t.Name == newTournament.Name) != null)
+            if (_tournaments.Any(t => t.Name == newTournament.Name))
                 return;
 
             _tournaments.Add(newTournament);
             Task.Run(SaveTournaments);
+            CommandModule.UpdateCommandTournamentList(newTournament.GuildId);
             newTournament.OnInit(true);
         }
 
@@ -42,6 +43,7 @@ namespace BotCore.Modules
                 guild.GetRole(role).DeleteAsync();
 
             Task.Run(SaveTournaments);
+            CommandModule.UpdateCommandTournamentList(tournament.GuildId);
             return true;
         }
 
@@ -75,6 +77,11 @@ namespace BotCore.Modules
                 tournament.TeamsModule.Tournament = tournament;
                 tournament.OnInit(false);
             }
+
+            List<Task> tasks = [];
+            foreach (var guild in Program.Client.Guilds)
+                tasks.Add(CommandModule.UpdateCommandTournamentList(guild.Id));
+            Task.WaitAll(tasks.ToArray());
         }
 
         public static async Task SaveTournaments()
@@ -99,8 +106,8 @@ namespace BotCore.Modules
         public ulong GuildId { get; set; }
         public ulong EventId { get; set; }
         public TeamsModule TeamsModule { get; set; }
-        private bool HasSentSignupMessage { get; set; } = false;
-        private bool HasSentStartMessage { get; set; } = false;
+        public bool HasSentSignupMessage { get; set; } = false;
+        public bool HasSentStartMessage { get; set; } = false;
 
 
         public Tournament()
@@ -115,6 +122,9 @@ namespace BotCore.Modules
 
         public void OnInit(bool justRegistered)
         {
+            if (SignupDeadline == DateTimeOffset.UnixEpoch)
+                SignupDeadline = StartTime;
+
             if (!HasSentSignupMessage && SignupDeadline != DateTimeOffset.UnixEpoch)
                 Observable.Timer(SignupDeadline).Subscribe(DisplaySignup_Timed);
             if (!HasSentStartMessage)
@@ -126,7 +136,7 @@ namespace BotCore.Modules
             var channel =
                 Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel;
 
-            channel?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`\n{Description}\n\n@everyone <@1210205776484769862>\n{EventUrl()}");
+            channel?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n@everyone <@1210205776484769862>\n{EventUrl()}");
         }
 
         private void DisplaySignup_Timed(long t)
@@ -139,6 +149,7 @@ namespace BotCore.Modules
             channel?.SendMessageAsync($"# **{Name} - SIGNUPS CLOSED.**\n\nRegistered teams:");
             channel?.SendMessageAsync(embeds: TeamsModule.Teams.Select(t => t.GenerateEmbed().Build()).ToArray());
             HasSentSignupMessage = true;
+            TournamentsModule.SaveTournaments();
 
             GenerateBracket();
         }
@@ -149,6 +160,7 @@ namespace BotCore.Modules
             (Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel)
                 ?.SendMessageAsync($"# **{Name} has started!**");
             HasSentStartMessage = true;
+            TournamentsModule.SaveTournaments();
         }
 
         public void EndTournament()

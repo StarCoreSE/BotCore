@@ -64,7 +64,8 @@ namespace BotCore.Modules
                         Type = ApplicationCommandOptionType.Integer,
                         Description = "Timestamp (in unix seconds) at which signups close for the event.",
                     },
-                ]
+                ],
+                DefaultMemberPermissions = GuildPermission.Administrator
             },
             new SlashCommandBuilder
             {
@@ -74,12 +75,13 @@ namespace BotCore.Modules
                 [
                     new SlashCommandOptionBuilder
                     {
-                        Name = "name",
+                        Name = "tournament",
                         Type = ApplicationCommandOptionType.String,
                         Description = "The name of the event.",
                         IsRequired = true
                     },
-                ]
+                ],
+                DefaultMemberPermissions = GuildPermission.Administrator
             },
             new SlashCommandBuilder
             {
@@ -94,7 +96,7 @@ namespace BotCore.Modules
                         Description = "The name of the tournament.",
                         IsRequired = true
                     }
-                ]
+                ],
             },
             new SlashCommandBuilder
             {
@@ -181,19 +183,13 @@ namespace BotCore.Modules
             foreach (var command in SlashCommands)
                 Console.WriteLine($"- {command.Name} {string.Join(", ", command.Options?.Select(o => o.IsRequired ?? false ? o.Name : $"({o.Name})") ?? Array.Empty<string>())}: {command.Description}");
 
-            if (!WereCommandsChanged(client))
-            {
-                Console.WriteLine("Commands already registered.");
-                return;
-            }
-
             try
             {
                 ApplicationCommandProperties[] allCommands = new ApplicationCommandProperties[SlashCommands.Count];
                 for (int i = 0; i < SlashCommands.Count; i++)
                     allCommands[i] = SlashCommands[i].Build();
 
-                await client.Rest.BulkOverwriteGlobalCommands(allCommands);
+                Task.WaitAll(client.Guilds.Select(g => g.BulkOverwriteApplicationCommandAsync(allCommands)).ToArray());
 
                 Console.WriteLine("Commands successfully registered.");
             }
@@ -226,6 +222,32 @@ namespace BotCore.Modules
             }
 
             return false;
+        }
+
+        public static async Task UpdateCommandTournamentList(ulong guildId)
+        {
+            var choices = new List<ApplicationCommandOptionChoiceProperties>();
+            foreach (var tournament in TournamentsModule.GetTournaments(guildId))
+            {
+                choices.Add(new ApplicationCommandOptionChoiceProperties
+                {
+                    Name = tournament.Name,
+                    Value = tournament.Name
+                });
+            }
+            
+            foreach (var command in SlashCommands)
+            {
+                var tournamentOption = command.Options?.Find(o => o.Name == "tournament");
+                if (tournamentOption != null)
+                    tournamentOption.Choices = choices;
+            }
+
+            ApplicationCommandProperties[] allCommands = new ApplicationCommandProperties[SlashCommands.Count];
+            for (int i = 0; i < SlashCommands.Count; i++)
+                allCommands[i] = SlashCommands[i].Build();
+
+            await Program.Client.GetGuild(guildId).BulkOverwriteApplicationCommandAsync(allCommands);
         }
 
         #region Command Methods
@@ -387,7 +409,7 @@ namespace BotCore.Modules
             string failReason;
             if (!tournament.TeamsModule.RegisterTeam(name, tag, command.User.Mention, users, out failReason))
             {
-                await command.RespondAsync(text: "Failed to register team! Reason:\n>" + failReason, ephemeral: true);
+                await command.RespondAsync(text: "Failed to register team! Reason:\n> " + failReason, ephemeral: true);
                 return;
             }
 
