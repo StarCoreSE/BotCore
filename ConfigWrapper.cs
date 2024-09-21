@@ -10,5 +10,6 @@ namespace BotCore
     {
         public string Token { get; set; }
         public ulong TournamentInfoChannel { get; set; }
+        public string[] Servers { get; set; }
     }
 }

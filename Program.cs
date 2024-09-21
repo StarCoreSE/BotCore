@@ -7,6 +7,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 using System;
 using System.Reflection;
 using BotCore.Modules;
+using BotCore.Modules.BracketModules;
 using Discord.Interactions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -53,9 +54,12 @@ namespace BotCore
 
         public async Task OnClientReady()
         {
-            await CommandModule.RegisterCommands(Client);
-            await ActivityModule.RegisterActivity(Client);
-            await TournamentsModule.LoadExistingTournaments();
+            Task.WaitAll(
+                CommandModule.RegisterCommands(Client),
+                ActivityModule.RegisterActivity(Client),
+                TournamentsModule.LoadExistingTournaments(),
+                BracketModuleBase.LoadData()
+                );
 
             Console.WriteLine("Initialized client.");
         }
