@@ -65,7 +65,6 @@ namespace BotCore.Modules
                         Description = "Timestamp (in unix seconds) at which signups close for the event.",
                     },
                 ],
-                DefaultMemberPermissions = GuildPermission.Administrator
             },
             new SlashCommandBuilder
             {
@@ -81,7 +80,6 @@ namespace BotCore.Modules
                         IsRequired = true
                     },
                 ],
-                DefaultMemberPermissions = GuildPermission.Administrator
             },
             new SlashCommandBuilder
             {
