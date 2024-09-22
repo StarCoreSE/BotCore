@@ -119,7 +119,7 @@ namespace BotCore.Modules
         }
     }
 
-    internal class Team
+    public class Team
     {
         public string Name { get; set; }
         public string Tag { get; set; }

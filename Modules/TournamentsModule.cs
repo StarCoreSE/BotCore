@@ -133,10 +133,7 @@ namespace BotCore.Modules
             if (!justRegistered)
                 return;
 
-            var channel =
-                Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel;
-
-            channel?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n@everyone <@1210205776484769862>\n{EventUrl()}");
+            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n@everyone <@1210205776484769862>\n{EventUrl()}");
         }
 
         private void DisplaySignup_Timed(long t)
@@ -144,7 +141,7 @@ namespace BotCore.Modules
             Console.WriteLine("Signup deadline closed for " + Name);
 
             var channel =
-                Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel;
+                UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel);
 
             channel?.SendMessageAsync($"# **{Name} - SIGNUPS CLOSED.**\n\nRegistered teams:");
             channel?.SendMessageAsync(embeds: TeamsModule.Teams.Select(t => t.GenerateEmbed().Build()).ToArray());
@@ -157,8 +154,7 @@ namespace BotCore.Modules
         private void DisplayStart_Timed(long t)
         {
             Console.WriteLine($"# **{Name} has started!**");
-            (Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel)
-                ?.SendMessageAsync($"# **{Name} has started!**");
+            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name} has started!**");
             HasSentStartMessage = true;
             TournamentsModule.SaveTournaments();
         }
@@ -166,8 +162,7 @@ namespace BotCore.Modules
         public void EndTournament()
         {
             TournamentsModule.CancelTournament(Name);
-            (Program.Client.GetGuild(GuildId).GetChannel(Program.Config.TournamentInfoChannel) as IMessageChannel)
-                ?.SendMessageAsync($"{Name} has ended!");
+            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{Name} has ended!");
         }
 
         public void GenerateBracket()
