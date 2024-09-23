@@ -19,7 +19,7 @@ namespace BotCore.Modules.BracketModules
 
         private static readonly string FolderPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\BotCore";
         private static readonly string FilePath = FolderPath + @"\seedData.json";
-        private static Dictionary<string, int> PlayerSeeds = new();
+        public static Dictionary<string, int> PlayerSeeds = new();
 
         public static async Task LoadData()
         {
@@ -83,12 +83,12 @@ namespace BotCore.Modules.BracketModules
 
         #region Seeding
 
-        public int GetPlayerSeed(string playerId)
+        public static int GetPlayerSeed(string playerId)
         {
-            return PlayerSeeds.GetValueOrDefault(playerId, 1200);
+            return PlayerSeeds.GetValueOrDefault(playerId, Program.Config.DefaultELO);
         }
 
-        public int GetTeamSeed(Team team)
+        public static int GetTeamSeed(Team team)
         {
             int seed = 0;
             foreach (var member in team.Members)
@@ -96,14 +96,14 @@ namespace BotCore.Modules.BracketModules
             return seed / team.Members.Length;
         }
 
-        public void SetPlayerSeed(string playerId, int seed, bool save)
+        public static void SetPlayerSeed(string playerId, int seed, bool save)
         {
             PlayerSeeds[playerId] = seed;
             if (save)
                 Task.WaitAll(SaveData());
         }
 
-        public void SetTeamSeed(Team team, int seed, bool save = true)
+        public static void SetTeamSeed(Team team, int seed, bool save = true)
         {
             int oldSeed = GetTeamSeed(team);
             int diff = oldSeed - seed;

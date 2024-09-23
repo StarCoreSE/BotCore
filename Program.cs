@@ -11,6 +11,7 @@ using BotCore.Modules.BracketModules;
 using Discord.Interactions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Diagnostics;
 
 namespace BotCore
 {
@@ -21,16 +22,25 @@ namespace BotCore
         public static ConfigWrapper Config;
         private static InteractionService _interactionService;
 
+        #if (DEBUG)
+            public const bool Debug = true;
+        #elif (RELEASE)
+            public const bool Debug = false;
+        #endif
+        public const ulong DebugGuildId = 1277394685333209250;
+
         #region Static Methods
 
         public static async Task Main()
         {
+            Console.WriteLine($"BotCore Server ver. {FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion} - [{(Debug ? "DEBUG" : "RELEASE")}]");
+
             Client = new DiscordSocketClient();
             Client.Log += Log;
 
             I = new Program();
 
-            Config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText("config.json")) ?? throw new NullReferenceException("config.json is null!");
+            Config = JsonSerializer.Deserialize<ConfigWrapper>(File.ReadAllText(Debug ? "config_Debug.json" : "config.json")) ?? throw new NullReferenceException("config.json is null!");
 
             await Client.LoginAsync(TokenType.Bot, Config.Token);
             await Client.StartAsync();

@@ -14,6 +14,8 @@ using Newtonsoft.Json;
 using static System.Net.WebRequestMethods;
 using Microsoft.VisualBasic.FileIO;
 using System.Xml.Linq;
+using BotCore.Modules.BracketModules;
+using System.Diagnostics;
 
 namespace BotCore.Modules
 {
@@ -141,6 +143,26 @@ namespace BotCore.Modules
                         IsRequired = true,
                     }
                 ]
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-list-elos",
+                Description = "List the ELO scores of all players.",
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-get-elo",
+                Description = "List the ELO score of a specific player.",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "player",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "Ping the player here.",
+                        IsRequired = true,
+                    }
+                ]
             }
         ];
 
@@ -152,10 +174,17 @@ namespace BotCore.Modules
             ["sc-list-teams"] = ListTeams,
             ["sc-register"] = RegisterTeam,
             ["sc-unregister"] = UnregisterTeam,
+            ["sc-list-elos"] = ListPlayerElos,
+            ["sc-get-elo"] = GetPlayerElo,
         };
 
         private static async Task SlashCommandHandler(SocketSlashCommand command)
         {
+            if (Program.Debug && command.GuildId != Program.DebugGuildId)
+                return;
+            if (!Program.Debug && command.GuildId == Program.DebugGuildId)
+                return;
+
             try
             {
                 await (SlashCommandMethods!.GetValueOrDefault(command.Data.Name, null)?.Invoke(command) ??
@@ -182,7 +211,14 @@ namespace BotCore.Modules
                 for (int i = 0; i < SlashCommands.Count; i++)
                     allCommands[i] = SlashCommands[i].Build();
 
-                Task.WaitAll(client.Guilds.Select(g => g.BulkOverwriteApplicationCommandAsync(allCommands)).ToArray());
+                if (Program.Debug)
+                {
+                    await client.GetGuild(Program.DebugGuildId).BulkOverwriteApplicationCommandAsync(allCommands);
+                }
+                else
+                {
+                    Task.WaitAll(client.Guilds.Select(g => g.BulkOverwriteApplicationCommandAsync(allCommands)).ToArray());
+                }
 
                 Console.WriteLine("Commands successfully registered.");
             }
@@ -191,30 +227,6 @@ namespace BotCore.Modules
                 var json = JsonConvert.SerializeObject(exception.Errors, Formatting.Indented);
                 Console.WriteLine(json);
             }
-        }
-
-
-        private static bool WereCommandsChanged(DiscordSocketClient client)
-        {
-            var existingCommands = client.Rest.GetGlobalApplicationCommands().Result.ToDictionary(c => c.Name);
-
-            if (SlashCommands.Count != existingCommands.Count)
-                return true;
-
-            RestGlobalCommand? existing;
-            foreach (var command in SlashCommands)
-            {
-                if (!existingCommands.TryGetValue(command.Name, out existing))
-                    return true;
-
-                if (command.Description != existing.Description)
-                    return true;
-
-                if (command.Options?.Count != existing.Options?.Count)
-                    return true;
-            }
-
-            return false;
         }
 
         public static async Task UpdateCommandTournamentList(ulong guildId)
@@ -248,7 +260,20 @@ namespace BotCore.Modules
         private static async Task HandlePing(SocketSlashCommand command)
         {
             // Now, Let's respond with the embed.
-            await command.RespondAsync(text: $"{(DateTimeOffset.Now - command.CreatedAt).TotalMilliseconds}ms", ephemeral: true);
+            await command.RespondAsync(text: $"{(DateTimeOffset.Now - command.CreatedAt).TotalMilliseconds}ms - [{(Program.Debug ? "DEBUG" : "RELEASE")}]", ephemeral: true);
+        }
+
+        private static async Task ListPlayerElos(SocketSlashCommand command)
+        {
+            StringBuilder builder = new StringBuilder("All Player ELO Scores:\n");
+            foreach (var kvp in BracketModuleBase.PlayerSeeds)
+                builder.Append($"{kvp.Key}: {kvp.Value}\n");
+            await command.RespondAsync(text: builder.ToString(), ephemeral: true);
+        }
+
+        private static async Task GetPlayerElo(SocketSlashCommand command)
+        {
+            await command.RespondAsync(text: $"{(string) command.Data.Options.First()}: {BracketModuleBase.GetPlayerSeed((string) command.Data.Options.First())}", ephemeral: true);
         }
 
         private static async Task CreateTestTournament(SocketSlashCommand command)

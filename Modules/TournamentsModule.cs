@@ -136,7 +136,7 @@ namespace BotCore.Modules
             if (!justRegistered)
                 return;
 
-            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n<@1210205776484769862>\n{EventUrl()}");
+            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n@SC Access\n{EventUrl()}");
         }
 
         private void DisplaySignup_Timed(long t)
