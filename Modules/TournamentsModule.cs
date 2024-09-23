@@ -81,7 +81,9 @@ namespace BotCore.Modules
             List<Task> tasks = [];
             foreach (var guild in Program.Client.Guilds)
                 tasks.Add(CommandModule.UpdateCommandTournamentList(guild.Id));
+            Console.WriteLine("* TournamentData - Waiting for command list update...");
             Task.WaitAll(tasks.ToArray());
+            Console.WriteLine("Finished loading tournament data.");
         }
 
         public static async Task SaveTournaments()
@@ -92,6 +94,7 @@ namespace BotCore.Modules
             File.Delete(FilePath);
             await using FileStream createStream = File.Create(FilePath);
             await JsonSerializer.SerializeAsync(createStream, _tournaments);
+            await createStream.FlushAsync();
 
             Console.WriteLine("Completed write operation.");
         }

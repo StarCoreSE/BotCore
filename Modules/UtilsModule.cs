@@ -13,5 +13,7 @@ namespace BotCore.Modules
         {
             return Program.Client.GetGuild(guildId)?.GetChannel(channelId) as IMessageChannel;
         }
+
+        public static Random Random = new Random();
     }
 }

@@ -2,15 +2,13 @@
 {
     internal class SingleBracketBase
     {
-        public SingleBracketBase(BracketModuleBase bracket)
+        public SingleBracketBase()
         {
-            Bracket = bracket;
         }
-
-        public BracketModuleBase Bracket;
 
         public Match[][] Matches = Array.Empty<Match[]>();
         public int ThisRoundId = 0, ThisMatchId = 0;
+        public bool IsFinished => ThisRoundId + 1 >= Matches.Length && ThisMatchId + 1 >= Matches[ThisRoundId].Length && GetCurrentMatch().Winner != null;
 
         public virtual Match? GetNextTeamMatch(Team team)
         {
@@ -28,7 +26,21 @@
 
         public virtual Match GetCurrentMatch()
         {
-            return Matches[ThisMatchId][ThisRoundId];
+            return Matches[ThisRoundId][ThisMatchId];
+        }
+
+        public virtual Match GetNextMatch()
+        {
+            int nextMatchId = ThisMatchId, nextRoundId = ThisRoundId;
+            if (ThisMatchId < Matches[ThisRoundId].Length - 1)
+                ThisMatchId++;
+            else if (ThisRoundId < Matches.Length - 1)
+            {
+                ThisRoundId++;
+                ThisMatchId = 0;
+            }
+
+            return Matches[ThisRoundId][ThisMatchId];
         }
 
         public virtual void StartMatch(int roundId, int matchId)
@@ -45,12 +57,37 @@
         /// <param name="matchId">Leave at -1 for the current match.</param>
         public virtual void EndMatch(Team winner, int roundId = -1, int matchId = -1)
         {
-            var match = Matches[roundId == -1 ? ThisRoundId : roundId][matchId == -1 ? ThisMatchId : matchId];
-            match.Winner = winner;
+            var currentMatch = Matches[roundId == -1 ? ThisRoundId : roundId][matchId == -1 ? ThisMatchId : matchId];
+            currentMatch.Winner = winner;
 
-            Bracket.CalculateNewTeamSeeds(match);
-
-            UtilsModule.GetChannel(Bracket.Tournament.GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{string.Join(" vs. ", match.Competitors.Select(t => $"<@{t.Role}>"))} has finished.\n### *{winner.Name} victory!*");
+            if (ThisRoundId + 1 < Matches.Length)
+            {
+                int nextRound = ThisRoundId + 1;
+                int id = (int) Math.Floor(ThisMatchId / 2d);
+                var nextMatch = Matches[nextRound][id];
+                Console.WriteLine($" Next: [({ThisRoundId}, {ThisMatchId})-({nextRound}, {id})]");
+                if (nextMatch == null)
+                {
+                    nextMatch = new Match
+                    {
+                        Id = id,
+                        Server = Program.Config.Servers[id % Program.Config.Servers.Length],
+                        Competitors =
+                        [
+                            currentMatch.Winner
+                        ]
+                    };
+                }
+                else
+                {
+                    nextMatch.Competitors =
+                    [
+                        nextMatch.Competitors[0],
+                        currentMatch.Winner
+                    ];
+                }
+                Matches[nextRound][id] = nextMatch;
+            }
         }
 
         /// <summary>
@@ -60,7 +97,7 @@
         internal virtual bool IncrementMatch()
         {
             if (ThisMatchId < Matches[ThisRoundId].Length - 1)
-                ThisRoundId++;
+                ThisMatchId++;
             else if (ThisRoundId < Matches.Length - 1)
             {
                 ThisRoundId++;

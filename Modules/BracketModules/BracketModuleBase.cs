@@ -23,16 +23,25 @@ namespace BotCore.Modules.BracketModules
 
         public static async Task LoadData()
         {
-            PlayerSeeds = JsonSerializer.Deserialize<Dictionary<string, int>>(await File.ReadAllBytesAsync(FilePath)) ?? throw new Exception("Could not read data file!");
+            Console.WriteLine($"Loading seed data from {FilePath}...");
+            if (File.Exists(FilePath))
+                PlayerSeeds =
+                    JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllBytes(FilePath)) ??
+                    throw new Exception("Could not read data file!");
+            else
+                await SaveData();
             Console.WriteLine($"Seeds loaded for {PlayerSeeds.Count} players.");
         }
 
         public static async Task SaveData()
         {
+            Console.WriteLine("Saving seed data...");
             Directory.CreateDirectory(FolderPath);
-            File.Delete(FilePath);
-            FileStream createStream = File.Create(FilePath);
+            await File.WriteAllTextAsync(FilePath, string.Empty);
+            FileStream createStream = File.OpenWrite(FilePath);
             await JsonSerializer.SerializeAsync(createStream, PlayerSeeds);
+            await createStream.FlushAsync();
+            Console.WriteLine("Seed data saved.");
         }
 
         #endregion
@@ -44,12 +53,12 @@ namespace BotCore.Modules.BracketModules
             Tournament = tournament;
         }
 
-        public abstract void GenerateBracket(IEnumerable<Team> teams, bool randomSeed);
+        public abstract void GenerateBracket(bool randomSeed);
         public abstract Match? GetNextTeamMatch(Team team);
         public abstract Match GetCurrentMatch();
         public virtual void StartMatch(int roundId, int matchId)
         {
-            UtilsModule.GetChannel(Tournament.GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{string.Join(" vs. ", GetCurrentMatch().Competitors.Select(t => $"<@{t.Role}>"))} is starting!\n*");
+            UtilsModule.GetChannel(Tournament.GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{MatchString(GetCurrentMatch())} is starting!\n*");
         }
         /// <summary>
         /// Ends the specified match.
@@ -57,13 +66,19 @@ namespace BotCore.Modules.BracketModules
         /// <param name="winner">The winner of the match. Null if a draw.</param>
         public virtual void EndMatch(Team winner)
         {
-            UtilsModule.GetChannel(Tournament.GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{string.Join(" vs. ", GetCurrentMatch().Competitors.Select(t => $"<@{t.Role}>"))} has finished.\n### *{winner.Name} victory!*");
+            UtilsModule.GetChannel(Tournament.GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"{MatchString(GetCurrentMatch())} has finished.\n### *{winner.Name} victory!*");
+            IncrementMatch();
         }
         /// <summary>
         /// Returns true if the tournament is over.
         /// </summary>
         /// <returns></returns>
         internal abstract bool IncrementMatch();
+
+        public virtual string MatchString(Match match)
+        {
+            return string.Join(" vs. ", match.Competitors.Select(t => $"<@{t.Role}>"));
+        }
 
         #region Seeding
 
@@ -74,13 +89,16 @@ namespace BotCore.Modules.BracketModules
 
         public int GetTeamSeed(Team team)
         {
-            return team.Members.Aggregate(0, (accumulated, playerId) => accumulated + GetPlayerSeed(playerId)) / team.Members.Length;
+            int seed = 0;
+            foreach (var member in team.Members)
+                seed += GetPlayerSeed(member);
+            return seed / team.Members.Length;
         }
 
         public void SetPlayerSeed(string playerId, int seed)
         {
             PlayerSeeds[playerId] = seed;
-            SaveData();
+            Task.WaitAll(SaveData());
         }
 
         public void SetTeamSeed(Team team, int seed)
@@ -90,7 +108,7 @@ namespace BotCore.Modules.BracketModules
             foreach (var playerId in team.Members)
                 PlayerSeeds[playerId] = GetPlayerSeed(playerId) + diff;
 
-            SaveData();
+            Task.WaitAll(SaveData());
         }
 
         /// <summary>
@@ -105,7 +123,10 @@ namespace BotCore.Modules.BracketModules
 
             foreach (var team in match.Competitors)
             {
-                double enemyRating = ratings.Aggregate(0, (accumulated, enemyTeam) => accumulated + (enemyTeam.Key == team ? 0 : enemyTeam.Value));
+                double enemyRating = 0;
+                foreach (var enemyTeam in ratings)
+                    enemyRating += enemyTeam.Key == team ? 0 : enemyTeam.Value;
+
                 double expectedScore = CalculateExpectedScore(ratings[team], enemyRating);
                 
                 double actualScore = 0;

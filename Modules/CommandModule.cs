@@ -50,19 +50,14 @@ namespace BotCore.Modules
                     {
                         Name = "timestamp",
                         Type = ApplicationCommandOptionType.Integer,
-                        Description = "Timestamp (in unix seconds) at which the event should be started.",
-                    },
-                    new SlashCommandOptionBuilder
-                    {
-                        Name = "datetime",
-                        Type = ApplicationCommandOptionType.String,
-                        Description = "Day and time (in UTC) at which the event should be started.",
+                        Description = "Timestamp (in unix seconds) at which the event should be started. https://hammertime.cyou/.",
+                        IsRequired = true
                     },
                     new SlashCommandOptionBuilder
                     {
                         Name = "deadline",
                         Type = ApplicationCommandOptionType.Integer,
-                        Description = "Timestamp (in unix seconds) at which signups close for the event.",
+                        Description = "Timestamp (in unix seconds) at which signups close for the event. https://hammertime.cyou/.",
                     },
                 ],
             },
@@ -274,13 +269,6 @@ namespace BotCore.Modules
                         break;
                     case "timestamp":
                         timestamp = (long) data.Value;
-                        break;
-                    case "datetime":
-                        if (!DateTimeOffset.TryParse((string) data.Value, out startTime))
-                        {
-                            await command.RespondAsync(text: $"Please add either a valid datetime or timestamp.", ephemeral: true);
-                            return;
-                        }
                         break;
                     case "description":
                         description = (string) data.Value;
