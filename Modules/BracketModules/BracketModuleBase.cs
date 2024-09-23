@@ -41,6 +41,7 @@ namespace BotCore.Modules.BracketModules
             FileStream createStream = File.OpenWrite(FilePath);
             await JsonSerializer.SerializeAsync(createStream, PlayerSeeds);
             await createStream.FlushAsync();
+            createStream.Close();
             Console.WriteLine("Seed data saved.");
         }
 
@@ -95,20 +96,22 @@ namespace BotCore.Modules.BracketModules
             return seed / team.Members.Length;
         }
 
-        public void SetPlayerSeed(string playerId, int seed)
+        public void SetPlayerSeed(string playerId, int seed, bool save)
         {
             PlayerSeeds[playerId] = seed;
-            Task.WaitAll(SaveData());
+            if (save)
+                Task.WaitAll(SaveData());
         }
 
-        public void SetTeamSeed(Team team, int seed)
+        public void SetTeamSeed(Team team, int seed, bool save = true)
         {
             int oldSeed = GetTeamSeed(team);
             int diff = oldSeed - seed;
             foreach (var playerId in team.Members)
                 PlayerSeeds[playerId] = GetPlayerSeed(playerId) + diff;
 
-            Task.WaitAll(SaveData());
+            if (save)
+                Task.WaitAll(SaveData());
         }
 
         /// <summary>
@@ -137,8 +140,10 @@ namespace BotCore.Modules.BracketModules
                 actualScore *= ratings.Count - 1;
 
                 double newRating = GetTeamSeed(team) + CalculateKFactor(ratings[team]) * (actualScore - expectedScore);
-                SetTeamSeed(team, (int) Math.Round(newRating));
+                SetTeamSeed(team, (int) Math.Round(newRating), false);
             }
+
+            Task.WaitAll(SaveData());
         }
 
         private double CalculateExpectedScore(double thisScore, double enemyScore)

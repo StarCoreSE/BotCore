@@ -318,7 +318,7 @@ namespace BotCore.Modules
             var guild = Program.Client.GetGuild(command.GuildId ??
                                                 throw new Exception("Command was not executed in a guild!"));
 
-            var newEvent = await guild.CreateEventAsync(name, startTime, GuildScheduledEventType.Voice, description: description, channelId: 1277394685802975266, coverImage: new Image("Resources/StarcoreLogo.png"));
+            var newEvent = await guild.CreateEventAsync(name, startTime, GuildScheduledEventType.Voice, description: description, channelId: Program.Config.TournamentVoiceChannel, coverImage: new Image("Resources/StarcoreLogo.png"));
             TournamentsModule.RegisterTournament(new Tournament
             {
                 Name = name,
