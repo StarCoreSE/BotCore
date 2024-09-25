@@ -79,8 +79,13 @@ namespace BotCore.Modules
             }
 
             List<Task> tasks = [];
-            foreach (var guild in Program.Client.Guilds)
-                tasks.Add(CommandModule.UpdateCommandTournamentList(guild.Id));
+
+            if (!Program.Debug)
+                foreach (var guild in Program.Client.Guilds)
+                    tasks.Add(CommandModule.UpdateCommandTournamentList(guild.Id));
+            else
+                await CommandModule.UpdateCommandTournamentList(Program.DebugGuildId);
+
             Console.WriteLine("* TournamentData - Waiting for command list update...");
             Task.WaitAll(tasks.ToArray());
             Console.WriteLine("Finished loading tournament data.");
@@ -136,7 +141,7 @@ namespace BotCore.Modules
             if (!justRegistered)
                 return;
 
-            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n@SC Access\n{EventUrl()}");
+            UtilsModule.GetChannel(GuildId, Program.Config.TournamentInfoChannel)?.SendMessageAsync($"# **{Name}**\n`Register your team with /sc-register`." + (SignupDeadline == DateTimeOffset.UnixEpoch ? "" : $" Sign-up deadline is <t:{SignupDeadline.ToUnixTimeSeconds()}:f>") + $"\n{Description}\n\n<@&1210205776484769862>\n{EventUrl()}");
         }
 
         private void DisplaySignup_Timed(long t)
