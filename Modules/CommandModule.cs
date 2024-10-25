@@ -520,7 +520,7 @@ namespace BotCore.Modules
                 .WithDescription("Instructions on how to do a simple mod hash check")
                 .AddField("📝 Steps to Perform a Hash Check",
                     "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
-                    "2. **Delete the File:** `appworkshop_244850.acf`n" +
+                    "2. **Delete the File:** `appworkshop_244850.acf`\n" +
                     "3. **Restart Your Game:** After deleting the files, restart Space Engineers.")
                 .Build();
             #endregion
