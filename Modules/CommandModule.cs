@@ -175,7 +175,25 @@ namespace BotCore.Modules
                         Name = "topic",
                         Type = ApplicationCommandOptionType.String,
                         Description = "topic that needs to be explained",
-                        IsRequired = true
+                        IsRequired = true,
+                        Choices = new List<ApplicationCommandOptionChoiceProperties>
+                        {
+                            new()
+                            {
+                                Name = "logs",
+                                Value = "logs"
+                            },
+                            new()
+                            {
+                                Name = "hashcheck",
+                                Value = "hashcheck"
+                            },
+                            new()
+                            {
+                                Name = "modflush",
+                                Value = "modflush"
+                            }
+                        }
                     },
                     new SlashCommandOptionBuilder
                     {
@@ -467,7 +485,7 @@ namespace BotCore.Modules
         {
             string topic = "";
             string mention = "";
-            IUser mentionedUser = null;
+            IUser? mentionedUser = null;
 
             #region Log Response
             var logEmbed = new EmbedBuilder()
@@ -545,16 +563,30 @@ namespace BotCore.Modules
                 }
             }
 
+            var allowedMentions = mentionedUser == null ? null : new AllowedMentions { UserIds = { mentionedUser.Id } };
+
             switch (topic)
             {
                 case "logs":
-                    await command.RespondAsync(text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}", embed: logEmbed, ephemeral: false, allowedMentions: new AllowedMentions { UserIds = { mentionedUser.Id } });
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: logEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
                     break;
                 case "hashcheck":
-                    await command.RespondAsync(text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}", embed: simpleFlushEmbed, ephemeral: false, allowedMentions: new AllowedMentions { UserIds = { mentionedUser.Id } });
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: simpleFlushEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
                     break;
                 case "modflush":
-                    await command.RespondAsync(text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}", embed: flushEmbed, ephemeral: false, allowedMentions: new AllowedMentions { UserIds = { mentionedUser.Id } });
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: flushEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
                     break;
                 default:
                     await command.RespondAsync(text: "Unrecognized Topic!");
