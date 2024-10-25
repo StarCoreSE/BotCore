@@ -163,6 +163,46 @@ namespace BotCore.Modules
                         IsRequired = true,
                     }
                 ]
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-help",
+                Description = "Display help embeds for various topics",
+                Options =
+                [
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "topic",
+                        Type = ApplicationCommandOptionType.String,
+                        Description = "topic that needs to be explained",
+                        IsRequired = true,
+                        Choices = new List<ApplicationCommandOptionChoiceProperties>
+                        {
+                            new()
+                            {
+                                Name = "logs",
+                                Value = "logs"
+                            },
+                            new()
+                            {
+                                Name = "hashcheck",
+                                Value = "hashcheck"
+                            },
+                            new()
+                            {
+                                Name = "modflush",
+                                Value = "modflush"
+                            }
+                        }
+                    },
+                    new SlashCommandOptionBuilder
+                    {
+                        Name = "mention",
+                        Type = ApplicationCommandOptionType.Mentionable,
+                        Description = "user to @ mention",
+                        IsRequired = false
+                    },
+                ],
             }
         ];
 
@@ -176,6 +216,7 @@ namespace BotCore.Modules
             ["sc-unregister"] = UnregisterTeam,
             ["sc-list-elos"] = ListPlayerElos,
             ["sc-get-elo"] = GetPlayerElo,
+            ["sc-help"] = HandleHelp,
         };
 
         private static async Task SlashCommandHandler(SocketSlashCommand command)
@@ -438,6 +479,119 @@ namespace BotCore.Modules
             }
 
             await command.RespondAsync(embed: team.GenerateEmbed(command.User).WithTitle($"*Unregistered [{team.Tag}] {team.Name}*").Build(), ephemeral: false);
+        }
+
+        private static async Task HandleHelp(SocketSlashCommand command)
+        {
+            string topic = "";
+            string mention = "";
+            IUser? mentionedUser = null;
+
+            #region Log Response
+            var logEmbed = new EmbedBuilder()
+                .WithTitle("Help: Retrieving Game and Mod Logs")
+                .WithDescription("Instructions on how to locate and share your Space Engineers game and mod log files.")
+                .AddField("📝 Game Logs",
+                    "**Location:** `%AppData%\\SpaceEngineers`\n\n" +
+                    "**Log File Format:** `SpaceEngineers_YYYYMMDD_#########.log`\n\n" +
+                    "**How to Share Your Latest Game Log:**\n" +
+                    "1. **Open Run Dialog:** Press `Win + R`.\n" +
+                    "2. **Access Directory:** Type `%AppData%\\SpaceEngineers` and press **Enter**.\n" +
+                    "3. **Sort Files by Date:** Click on the `Date Modified` column.\n" +
+                    "4. **Find Latest Log:** Look for the most recent `.log` file.\n" +
+                    "5. **Share the Log:** Drag and drop the latest `.log` file into the **#logs-and-complaints** channel.")
+                .AddField("🛠️ Mod Logs",
+                    "**Location:** `%AppData%\\SpaceEngineers\\Storage`\n\n" +
+                    "*Mod logs may be inside a specific mod's folder or directly within this directory.*\n\n" +
+                    "**How to Share Your Latest Mod Log:**\n" +
+                    "1. **Open Run Dialog:** Press `Win + R`.\n" +
+                    "2. **Access Directory:** Type(or Paste) `%AppData%\\SpaceEngineers\\Storage` and press **Enter**.\n" +
+                    "3. **Sort Files by Date:** Click on the `Date Modified` column.\n" +
+                    "4. **Find Latest Mod Log:** Look for the most recent `.log` file.\n" +
+                    "5. **Share the Log:** Drag and drop the latest `.log` file into the **#logs-and-complaints** channel.")
+                .AddField("ℹ️ Note",
+                    "Using `%AppData%` automatically directs you to the correct AppData location for your user account.")
+                .Build();
+            #endregion
+
+            #region Simple Flush Response
+            var simpleFlushEmbed = new EmbedBuilder()
+                .WithTitle("Help: Mod Hash Check")
+                .WithDescription("Instructions on how to do a simple mod hash check")
+                .AddField("📝 Steps to Perform a Hash Check",
+                    "**1. Navigate to the Steam Workshop Folder:**\n" +
+                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
+                    "   - **Delete the File:** `appworkshop_244850.acf`\n\n" +
+                    "**2. Restart Your Game:**\n" +
+                    "   - After deleting the files, restart Space Engineers.")
+                .Build();
+            #endregion
+
+            #region Flush Response
+            var flushEmbed = new EmbedBuilder()
+                .WithTitle("Help: Full Mod Flush")
+                .WithDescription("Instructions on how to purge existing mod data to force a refresh.")
+                .AddField("📝 Steps to Perform a Full Mod Flush",
+                    "**1. Navigate to the Steam Workshop Folder:**\n" +
+                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
+                    "   - **Delete the File:** `appworkshop_244850.acf`\n\n" +
+                    "**2. Navigate to the Space Engineers Workshop Content Folder:**\n" +
+                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\244850`\n" +
+                    "   - **Delete Numbered Folders:** Select all numbered folders and delete them.\n\n" +
+                    "**3. Navigate to the Storage Folder:**\n" +
+                    "   - **Open Run Dialog:** Press `Win + R`.\n" +
+                    "   - **Access Directory:** Type(or Paste) `%AppData%\\SpaceEngineers\\Storage` and press **Enter**.\n" +
+                    "   - **Delete All Content:** Select all folders and files and delete them.\n\n" +
+                    "**4. Restart Your Game:**\n" +
+                    "   - After deleting the files, restart Space Engineers.")
+                .Build();
+            #endregion
+
+            foreach (var data in command.Data.Options)
+            {
+                switch (data.Name)
+                {
+                    case "topic":
+                        topic = (string)data.Value;
+                        break;
+                    case "mention":
+                        if (data.Value is IUser)
+                        {
+                            mentionedUser = (IUser)data.Value;
+                        }
+                        break;
+                }
+            }
+
+            var allowedMentions = mentionedUser == null ? null : new AllowedMentions { UserIds = { mentionedUser.Id } };
+
+            switch (topic)
+            {
+                case "logs":
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: logEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
+                    break;
+                case "hashcheck":
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: simpleFlushEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
+                    break;
+                case "modflush":
+                    await command.RespondAsync(
+                        text: $"{(mentionedUser == null ? "" : $"{mentionedUser.Mention}")}",
+                        embed: flushEmbed,
+                        ephemeral: false,
+                        allowedMentions: allowedMentions);
+                    break;
+                default:
+                    await command.RespondAsync(text: "Unrecognized Topic!");
+                    break;
+            }
         }
 
         #endregion
