@@ -43,6 +43,16 @@ namespace BotCore.Modules
                 members = members.Append(leader).ToArray();
             members = members.Where(m => !string.IsNullOrWhiteSpace(m)).ToArray();
 
+            // Check for invalid members
+            foreach (var member in members)
+            {
+                if (!member.StartsWith("<@") || !member.EndsWith('>'))
+                {
+                    reason = $"Team member \"{member}\" is not a valid @-mention!";
+                    return false;
+                }
+            }
+
             Team newTeam = new Team
             {
                 Name = teamName,
