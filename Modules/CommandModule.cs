@@ -519,7 +519,7 @@ namespace BotCore.Modules
                 .WithTitle("Help: Mod Hash Check")
                 .WithDescription("Instructions on how to do a simple mod hash check")
                 .AddField("📝 Steps to Perform a Hash Check",
-                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop'\n" +
+                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
                     "2. **Delete the File:** `appworkshop_244850.acf`n" +
                     "3. **Restart Your Game:** After deleting the files, restart Space Engineers.")
                 .Build();
@@ -530,7 +530,7 @@ namespace BotCore.Modules
                 .WithTitle("Help: Full Mod Flush")
                 .WithDescription("Instructions on how to purge existing mod data to force a refresh.")
                 .AddField("📝 Steps to Perform a Full Mod Flush",
-                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop'\n" +
+                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
                     "2. **Delete the File:** `appworkshop_244850.acf`\n" +
                     "3. **Navigate to the Space Engineers Content Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\244850`\n" +
                     "4. **Delete Numbered Folders:** Select all numbered folders and delete them.\n" +
