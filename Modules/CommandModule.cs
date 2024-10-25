@@ -519,11 +519,9 @@ namespace BotCore.Modules
                 .WithTitle("Help: Mod Hash Check")
                 .WithDescription("Instructions on how to do a simple mod hash check")
                 .AddField("📝 Steps to Perform a Hash Check",
-                    "**1. Navigate to the Steam Workshop Folder:**\n" +
-                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
-                    "   - **Delete the File:** `appworkshop_244850.acf`\n\n" +
-                    "**2. Restart Your Game:**\n" +
-                    "   - After deleting the files, restart Space Engineers.")
+                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop'\n" +
+                    "2. **Delete the File:** `appworkshop_244850.acf`n" +
+                    "3. **Restart Your Game:** After deleting the files, restart Space Engineers.")
                 .Build();
             #endregion
 
@@ -532,18 +530,14 @@ namespace BotCore.Modules
                 .WithTitle("Help: Full Mod Flush")
                 .WithDescription("Instructions on how to purge existing mod data to force a refresh.")
                 .AddField("📝 Steps to Perform a Full Mod Flush",
-                    "**1. Navigate to the Steam Workshop Folder:**\n" +
-                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop`\n" +
-                    "   - **Delete the File:** `appworkshop_244850.acf`\n\n" +
-                    "**2. Navigate to the Space Engineers Workshop Content Folder:**\n" +
-                    "   - **Location:** `C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\244850`\n" +
-                    "   - **Delete Numbered Folders:** Select all numbered folders and delete them.\n\n" +
-                    "**3. Navigate to the Storage Folder:**\n" +
-                    "   - **Open Run Dialog:** Press `Win + R`.\n" +
-                    "   - **Access Directory:** Type(or Paste) `%AppData%\\SpaceEngineers\\Storage` and press **Enter**.\n" +
-                    "   - **Delete All Content:** Select all folders and files and delete them.\n\n" +
-                    "**4. Restart Your Game:**\n" +
-                    "   - After deleting the files, restart Space Engineers.")
+                    "1. **Navigate to the Steam Workshop Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop'\n" +
+                    "2. **Delete the File:** `appworkshop_244850.acf`\n" +
+                    "3. **Navigate to the Space Engineers Content Folder:** Located at `C:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\244850`\n" +
+                    "4. **Delete Numbered Folders:** Select all numbered folders and delete them.\n" +
+                    "5. **Open Run Dialog:** Press `Win + R`.\n" +
+                    "6. **Access Directory:** Type(or Paste) `%AppData%\\SpaceEngineers\\Storage` and press **Enter**.\n" +
+                    "7. **Delete All Content:** Select all folders and files and delete them.\n" +
+                    "8. **Restart Your Game:** After deleting the files, restart Space Engineers.")
                 .Build();
             #endregion
 
