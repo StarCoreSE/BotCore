@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
-namespace BotCore.Modules.BracketModules
+﻿namespace BotCore.Modules.BracketModules
 {
     internal class SingleEliminationModule(Tournament tournament) : BracketModuleBase(tournament)
     {

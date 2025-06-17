@@ -1,16 +1,9 @@
-﻿using System.Text;
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
-using Discord.Net;
-using Newtonsoft.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
-using System;
 using System.Reflection;
 using BotCore.Modules;
 using BotCore.Modules.BracketModules;
-using Discord.Interactions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Diagnostics;
 
 namespace BotCore
@@ -20,7 +13,8 @@ namespace BotCore
         public static DiscordSocketClient Client;
         public static Program? I;
         public static ConfigWrapper Config;
-        private static InteractionService _interactionService;
+
+        public static string VersionHeader { get; private set; } = "";
 
         #if (DEBUG)
             public const bool Debug = true;
@@ -33,7 +27,10 @@ namespace BotCore
 
         public static async Task Main()
         {
-            Console.WriteLine($"BotCore Server ver. {FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion} - [{(Debug ? "DEBUG" : "RELEASE")}]");
+            VersionHeader = $"BotCore Server v{FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion} - [{(Debug ? "DEBUG" : "RELEASE")}]\n" +
+                            $"  by Aristeas";
+
+            Console.WriteLine(VersionHeader);
 
             Client = new DiscordSocketClient();
             Client.Log += Log;

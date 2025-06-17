@@ -1,21 +1,10 @@
-﻿using Discord.Interactions;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Discord.WebSocket;
 using Discord;
 using Discord.Net;
-using Discord.Rest;
 using Newtonsoft.Json;
-using static System.Net.WebRequestMethods;
-using Microsoft.VisualBasic.FileIO;
-using System.Xml.Linq;
 using BotCore.Modules.BracketModules;
-using System.Diagnostics;
 
 namespace BotCore.Modules
 {
@@ -203,7 +192,12 @@ namespace BotCore.Modules
                         IsRequired = false
                     },
                 ],
-            }
+            },
+            new SlashCommandBuilder
+            {
+                Name = "sc-restart",
+                Description = "Force-restart all servers.",
+            },
         ];
 
         private static readonly Dictionary<string, Func<SocketSlashCommand, Task>> SlashCommandMethods = new()
@@ -217,6 +211,7 @@ namespace BotCore.Modules
             ["sc-list-elos"] = ListPlayerElos,
             ["sc-get-elo"] = GetPlayerElo,
             ["sc-help"] = HandleHelp,
+            ["sc-restart"] = HandleServerRestart,
         };
 
         private static async Task SlashCommandHandler(SocketSlashCommand command)
@@ -300,8 +295,11 @@ namespace BotCore.Modules
 
         private static async Task HandlePing(SocketSlashCommand command)
         {
-            // Now, Let's respond with the embed.
-            await command.RespondAsync(text: $"{(DateTimeOffset.Now - command.CreatedAt).TotalMilliseconds}ms - [{(Program.Debug ? "DEBUG" : "RELEASE")}]", ephemeral: true);
+            await command.RespondAsync(text: $"```" +
+                                             $"{Program.VersionHeader}\n\n" +
+                                             $"{(DateTimeOffset.UtcNow - command.CreatedAt).TotalMilliseconds}ms command delay\n" +
+                                             $"{Program.Client.Latency}ms latency" +
+                                             $"```", ephemeral: true);
         }
 
         private static async Task ListPlayerElos(SocketSlashCommand command)
@@ -421,7 +419,7 @@ namespace BotCore.Modules
                 return;
             }
 
-            await command.RespondAsync(text: $"Teams registered for {tournament.Name}:", ephemeral: true);
+            await command.RespondAsync(text: $"Teams registered for {tournament.Name}:\n  " + string.Join("\n  ", tournament.TeamsModule.Teams.Select(t => $"<@&{t.Role}>")), ephemeral: true);
 
             foreach (var team in tournament.TeamsModule.Teams)
                 await command.FollowupAsync(embed: team.GenerateEmbed().Build(), ephemeral: true);
@@ -586,6 +584,49 @@ namespace BotCore.Modules
                     await command.RespondAsync(text: "Unrecognized Topic!");
                     break;
             }
+        }
+
+        private static async Task HandleServerRestart(SocketSlashCommand command)
+        {
+            // SC server
+            if ((command.GuildId ?? throw new Exception("Command cannot be run outside of a server!")) !=
+                855480694137946153)
+                throw new Exception("Command cannot be run outside of the StarCore server!");
+
+            if (command.ChannelId != 1048397351376654366)
+            {
+                await command.RespondAsync(text: "Command cannot be run outside of <#1048397351376654366>!");
+                return;
+            }
+
+            await command.RespondAsync(text: $"Restarting servers...");
+
+            var stopOutput = await UtilsModule.RunProcess(@"C:\SERVERS\StarCore S5\STOP-ALL-SERVERS.bat");
+            await command.Channel.SendMessageAsync(embed: 
+                    new EmbedBuilder
+                    {
+                        Title = $"Stopped servers (exit code {stopOutput.Item1})",
+                        Description = stopOutput.Item2
+                    }.Build()
+            );
+
+            var pullOutput = await UtilsModule.RunProcess(@"C:\SERVERS\StarCore S5\FORCEPULL_ALL.bat");
+            await command.Channel.SendMessageAsync(embed: 
+                new EmbedBuilder
+                {
+                    Title = $"Pulled worlds from git (exit code {pullOutput.Item1})",
+                    Description = pullOutput.Item2
+                }.Build()
+            );
+
+            UtilsModule.RunProcess(@"C:\SERVERS\StarCore S5\START-ALL-SERVERS.bat");
+            await command.Channel.SendMessageAsync(embed: 
+                new EmbedBuilder
+                {
+                    Title = $"Starting servers!",
+                    Description = "No debug output here because Aristeas is too stupid to figure out how to make batch process starting non-blocking."
+                }.Build()
+            );
         }
 
         #endregion
